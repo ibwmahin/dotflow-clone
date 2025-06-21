@@ -1,0 +1,17 @@
+.node-item {
+  cursor: grab;
+}
+
+.node-item:active {
+  cursor: grabbing;
+}
+
+#drawflow {
+  position: relative;
+  overflow: hidden;
+}
+
+.text-label {
+  z-index: 10;
+  cursor: move;
+}
