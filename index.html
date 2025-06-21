@@ -9,64 +9,80 @@
   <!--adding drag flow cdn for smooth uses -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.js">
   <script src="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.js"></script>
-  <!-- using the heroicons here (font we can replace it with svg or boxicons/fontawesome) -->
+  <!-- using the heroicons here  -->
   <script src="https://cdn.jsdelivr.net/npm/heroicons@2.0.13/24/outline.js"></script>
+  <!-- boxicons icon cdn gose from here  -->
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
   <!-- tailwind css script link gose form here -->
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
 <body class="bg-black text-white">
-  <div class="relative w-full h-screen">
-    <!-- Top Left: Text Input Box -->
-    <div class="absolute top-4 left-4 z-20 flex space-x-2">
-      <input type="text" id="text-input" placeholder="Enter text"
-        class="bg-gray-800 text-white p-2 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
-      <button id="add-text-btn" class="bg-blue-600 hover:bg-blue-700 p-2 rounded">Add</button>
-    </div>
 
+  <body class="bg-gray-900 text-white">
+    <div class="relative w-full h-screen">
+      <!-- Top Left: Text Input Box -->
+      <div class="absolute top-4 left-4 z-20 flex space-x-2">
+        <input type="text" id="text-input" placeholder="Enter text"
+          class="bg-gray-800 text-white p-2 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <button id="add-text-btn" class="bg-blue-600 hover:bg-blue-700 p-2 rounded">Add</button>
+      </div>
 
-    <!-- canvas for board -->
-    <div id="drawflow" class="w-full h-full">
+      <!-- Canvas -->
+      <div id="drawflow" class="w-full h-full"></div>
+
       <!-- Bottom Left: Control Buttons -->
       <div class="absolute bottom-4 left-4 z-20 flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
         <button id="maximize-btn" class="bg-gray-800 p-2 rounded hover:bg-gray-700" title="Maximize">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 0h-4m4 0l-5-5"></path>
-          </svg>
+          <i class='bx bx-fullscreen'></i>
         </button>
         <button id="zoom-in-btn" class="bg-gray-800 p-2 rounded hover:bg-gray-700" title="Zoom In">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zm-7-4v6m0 0V7m0 3h3m-3 0H7"></path>
-          </svg>
+          <i class='bx bx-zoom-in'></i>
         </button>
         <button id="zoom-out-btn" class="bg-gray-800 p-2 rounded hover:bg-gray-700" title="Zoom Out">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"></path>
-          </svg>
+          <i class='bx bx-zoom-out'></i>
         </button>
         <button id="reset-btn" class="bg-gray-800 p-2 rounded hover:bg-gray-700" title="Reset">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9H0m11.418 11a8 8 0 10-.582-16H12v5"></path>
-          </svg>
+          <i class='bx bx-refresh'></i>
         </button>
+      </div>
+
+      <!-- Top Right: Add Button -->
+      <button id="add-btn" class="absolute top-4 right-4 z-20 bg-gray-800 p-2 rounded hover:bg-gray-700">
+        <i class='bx bx-plus'></i>
+      </button>
+
+      <!-- Sidebar -->
+      <div id="sidebar"
+        class="absolute top-0 right-0 h-full w-full md:w-80 bg-gray-800 p-4 transform translate-x-full hidden transition-transform duration-300 ease-in-out z-40">
+        <button id="close-btn" class="absolute top-4 right-4 text-white hover:text-gray-300">
+          <i class='bx bx-x'></i>
+        </button>
+        <h2 class="text-xl font-bold mb-4">What happens next?</h2>
+        <input type="text" id="search-input" placeholder="Search nodes..."
+          class="w-full bg-gray-700 text-white p-2 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4">
+        <div id="node-list" class="space-y-4 overflow-y-auto h-[calc(100%-8rem)]">
+          <div class="node-item flex items-start space-x-2" draggable="true" data-node-type="ai-agent">
+            <i class='bx bx-bot'></i>
+            <div>
+              <h3 class="font-bold">AI Agent</h3>
+              <p class="text-gray-400 text-sm">Runs the flow when a user sends a chat message.</p>
+            </div>
+          </div>
+          <div class="node-item flex items-start space-x-2" draggable="true" data-node-type="send-email">
+            <i class='bx bx-envelope'></i>
+            <div>
+              <h3 class="font-bold">Send Email</h3>
+              <p class="text-gray-400 text-sm">Sends an email to a specified recipient.</p>
+            </div>
+          </div>
+          <!-- Add more node types as needed -->
+        </div>
       </div>
     </div>
 
 
-    <!-- Top Right: Add Button -->
-    <button id="add-btn" class="absolute top-4 right-4 z-20 bg-gray-800 p-2 rounded hover:bg-gray-700">
-      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-      </svg>
-    </button>
-  </div>
-
-
-  <script src="./script/main.js"></script>
-</body>
+    <script src="./script/main.js"></script>
+  </body>
 
 </html>
