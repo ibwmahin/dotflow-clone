@@ -105,3 +105,49 @@ sidebar.addEventListener("transitionend", (e) => {
     sidebar.classList.add("hidden");
   }
 });
+
+document.getElementById("add-textt-btn").addEventListener("click", () => {
+  const text = document.getElementById("text-input").value.trim();
+
+  if (text) {
+    const textElement = document.createElement("div");
+    textElement.className =
+      "text-label absolute bg-gray-800 text-white p-2 border border-gray-600";
+
+    textElement.innerText = text;
+    textElement.style.left = "50%";
+    textElement.style.top = "50%";
+    textElement.style.transform = "translate(-50%,-50%)";
+
+    canvas.appendChild(textElement);
+    // draging;
+
+    let isDraggingg = false,
+      startX,
+      startY;
+    textElement.addEventListener("mousedown", (e) => {
+      isDraggingg = true;
+      startX = e.clientX - parseFloat(textElement.style.left || 0);
+      startY = e.clientY - parseFloat(textElement.style.top || 0);
+    });
+
+    // moving
+
+    document.addEventListener("mousemove", (e) => {
+      if (isDragging) {
+        textElement.style.left = `${e.clientX - startX}px`;
+        textElement.style.top = `${e.clientY - startY}px`;
+      }
+    });
+
+    // draggin off
+
+    document.addEventListener("mouseup", () => {
+      isDraggingg = false;
+    });
+
+    // text - input
+
+    document.getElementById("text-input").value = "";
+  }
+});
