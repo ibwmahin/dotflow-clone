@@ -2,12 +2,11 @@ const node = document.querySelector('.node')
 
 let offsetX, offsetY;
 
-
+console.log('')
 node.addEventListener('dragstart', (e) => {
   offsetX = e.offsetX;
   offsetY = e.offsetY;
 })
-
 
 document.getElementById("canvas").addEventListener("dragover", (e) => {
   e.preventDefault();
