@@ -1,0 +1,23 @@
+/* No custom CSS needed if using Tailwind fully, but add this to ensure canvas works */
+#drawflow {
+  position: relative;
+  overflow: auto;
+}
+
+.drawflow-node {
+  position: absolute;
+  z-index: 10;
+}
+
+.drawflow-node .delete-node {
+  display: none;
+}
+
+.drawflow-node:hover .delete-node {
+  display: flex;
+}
+
+.text-label {
+  position: absolute;
+  z-index: 10;
+}
