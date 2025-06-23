@@ -4,6 +4,15 @@
   overflow: auto;
 }
 
+#drawflow,
+#connection-canvas,
+.canvas-wrapper {
+  background-color: transparent !important;
+}
+
+body {
+  background-color: transparent;
+}
 .drawflow-node {
   position: absolute;
   z-index: 10;

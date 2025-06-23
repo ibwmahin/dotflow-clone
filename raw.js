@@ -1,133 +1,114 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const canvas = document.getElementById("drawflow");
-  const sidebar = document.getElementById("sidebar");
-  const connectionCanvas = document.getElementById("connection-canvas");
-  let scale = 1;
-  const connections = new Map();
-  let connectMode = false;
-  let sourceNode = null;
+  const $ = (id) => document.getElementById(id);
+  const canvas = $("drawflow");
+  const sidebar = $("sidebar");
+  const connectionCanvas = $("connection-canvas");
+  const connectBtn = $("connect-btn");
+
+  if (!canvas || !sidebar || !connectionCanvas) {
+    console.error("Missing core UI elements");
+    return;
+  }
 
   connectionCanvas.width = canvas.offsetWidth;
   connectionCanvas.height = canvas.offsetHeight;
-
-  if (!canvas || !sidebar || !connectionCanvas) {
-    console.error("Canvas, Sidebar, or Connection Canvas not found!");
-  } else {
-  }
-
-  // Prevent connection canvas from blocking events
   connectionCanvas.style.pointerEvents = "none";
 
-  function getCanvasCoordinates(event) {
+  let scale = 1;
+  let connectMode = false;
+  let sourceNode = null;
+  const connections = new Map();
+
+  const generateId = () =>
+    `node-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+  const getCanvasCoordinates = ({ clientX, clientY }) => {
     const rect = canvas.getBoundingClientRect();
     const precanvas = canvas.querySelector(".drawflow") || canvas;
-    const transform = window.getComputedStyle(precanvas).transform;
-    const matrix = new DOMMatrix(transform);
-    const translateX = matrix.m41;
-    const translateY = matrix.m42;
-    const screenX = event.clientX - rect.left;
-    const screenY = event.clientY - rect.top;
-    const canvasX = (screenX - translateX) / scale;
-    const canvasY = (screenY - translateY) / scale;
-    return { x: canvasX, y: canvasY };
-  }
+    const matrix = new DOMMatrix(window.getComputedStyle(precanvas).transform);
+    return {
+      x: (clientX - rect.left - matrix.m41) / scale,
+      y: (clientY - rect.top - matrix.m42) / scale,
+    };
+  };
 
-  function makeDraggable(element) {
-    let isDragging = false;
-    let startX, startY, initialX, initialY;
+  // DRAGGING LOGIC
+  let currentDragNode = null;
+  let dragStartX, dragStartY, initialX, initialY;
 
-    element.addEventListener("mousedown", (e) => {
-      if (e.button === 0) {
-        e.preventDefault();
-        isDragging = true;
-        const rect = element.getBoundingClientRect();
-        initialX =
-          rect.left - canvas.getBoundingClientRect().left + window.scrollX;
-        initialY =
-          rect.top - canvas.getBoundingClientRect().top + window.scrollY;
-        const style = window.getComputedStyle(element);
-        const transform = new WebKitCSSMatrix(
-          style.transform || style.webkitTransform,
-        );
-        if (transform) {
-          initialX += transform.m41 + element.offsetWidth / 2;
-          initialY += transform.m42 + element.offsetHeight / 2;
-        }
-        startX = e.clientX;
-        startY = e.clientY;
-        updateConnections();
-      }
+  const makeDraggable = (el) => {
+    el.addEventListener("mousedown", (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+
+      const rect = el.getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
+      const matrix = new DOMMatrix(getComputedStyle(el).transform || "none");
+
+      initialX = rect.left - canvasRect.left + matrix.m41 + el.offsetWidth / 2;
+      initialY = rect.top - canvasRect.top + matrix.m42 + el.offsetHeight / 2;
+
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      currentDragNode = el;
     });
+  };
 
-    document.addEventListener("mousemove", (e) => {
-      if (isDragging) {
-        const dx = e.clientX - startX;
-        const dy = e.clientY - startY;
-        element.style.left = `${initialX + dx}px`;
-        element.style.top = `${initialY + dy}px`;
-        element.style.transform = "none";
-        updateConnections();
-      }
+  document.addEventListener("mousemove", (e) => {
+    if (!currentDragNode) return;
+    const dx = e.clientX - dragStartX;
+    const dy = e.clientY - dragStartY;
+    Object.assign(currentDragNode.style, {
+      left: `${initialX + dx}px`,
+      top: `${initialY + dy}px`,
+      transform: "none",
     });
+    updateConnections();
+  });
 
-    document.addEventListener("mouseup", () => {
-      isDragging = false;
-      updateConnections();
-    });
-  }
+  document.addEventListener("mouseup", () => {
+    currentDragNode = null;
+  });
 
-  function updateConnections() {
+  const updateConnections = () => {
     const ctx = connectionCanvas.getContext("2d");
-    if (!ctx) {
-      console.error("Connection Canvas 2D context not available!");
-      return;
-    }
+    if (!ctx) return;
+
     ctx.clearRect(0, 0, connectionCanvas.width, connectionCanvas.height);
+    const { width, height, left, top } = canvas.getBoundingClientRect();
 
-    const canvasRect = canvas.getBoundingClientRect();
-    const canvasWidth = canvasRect.width;
-    const canvasHeight = canvasRect.height;
+    connections.forEach(({ from, to }) => {
+      const fromRect = from.getBoundingClientRect();
+      const toRect = to.getBoundingClientRect();
 
-    connections.forEach((conn, key) => {
-      const fromRect = conn.from.getBoundingClientRect();
-      const toRect = conn.to.getBoundingClientRect();
-      if (isNaN(fromRect.left) || isNaN(toRect.left)) {
-        console.warn("Invalid rect for connection:", key);
-        return;
-      }
-      const fromX = fromRect.left + fromRect.width / 2 - canvasRect.left;
-      const fromY = fromRect.top + fromRect.height / 2 - canvasRect.top;
-      const toX = toRect.left + toRect.width / 2 - canvasRect.left;
-      const toY = toRect.top + toRect.height / 2 - canvasRect.top;
+      const [fromX, fromY] = [
+        fromRect.left + fromRect.width / 2 - left,
+        fromRect.top + fromRect.height / 2 - top,
+      ];
+      const [toX, toY] = [
+        toRect.left + toRect.width / 2 - left,
+        toRect.top + toRect.height / 2 - top,
+      ];
 
       ctx.beginPath();
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.7)";
+      ctx.strokeStyle = "rgba(255,255,255,0.7)";
       ctx.lineWidth = 2;
 
       const dx = toX - fromX;
       const dy = toY - fromY;
-      const distance = Math.sqrt(dx * dx + dy * dy);
 
-      if (distance > 200) {
-        const slope = dy / dx || 0;
-        let controlX1, controlY1, controlX2, controlY2;
-
-        if (Math.abs(dx) > Math.abs(dy)) {
-          controlX1 = fromX + canvasWidth / 4;
-          controlY1 = fromY;
-          controlX2 = toX - canvasWidth / 4;
-          controlY2 = toY;
-        } else {
-          controlX1 = fromX;
-          controlY1 = fromY + canvasHeight / 4;
-          controlX2 = toX;
-          controlY2 = toY - canvasHeight / 4;
-        }
-
+      if (Math.hypot(dx, dy) > 200) {
+        const isWide = Math.abs(dx) > Math.abs(dy);
+        const [c1x, c1y] = isWide
+          ? [fromX + width / 4, fromY]
+          : [fromX, fromY + height / 4];
+        const [c2x, c2y] = isWide
+          ? [toX - width / 4, toY]
+          : [toX, toY - height / 4];
         ctx.moveTo(fromX / scale, fromY / scale);
         ctx.quadraticCurveTo(
-          controlX1 / scale,
-          controlY1 / scale,
+          c1x / scale,
+          c1y / scale,
           toX / scale,
           toY / scale,
         );
@@ -138,214 +119,171 @@ document.addEventListener("DOMContentLoaded", () => {
 
       ctx.stroke();
     });
-  }
+  };
 
-  // Make sidebar nodes draggable
-  document.querySelectorAll(".node-item").forEach((node) => {
-    node.setAttribute("draggable", "true");
-    node.addEventListener("dragstart", (e) => {
-      e.dataTransfer.setData("text/plain", node.dataset.nodeType);
-      e.dataTransfer.effectAllowed = "move";
-      e.dataTransfer.setDragImage(node, 10, 10);
-    });
-    node.addEventListener("dragend", (e) => {});
-  });
-
-  // Set up canvas as drop target
-  canvas.addEventListener("dragenter", (e) => {
-    e.preventDefault();
-  });
-
-  canvas.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    canvas.style.position = "relative";
-    canvas.style.zIndex = "10";
-    connectionCanvas.style.pointerEvents = "none";
-  });
-
-  canvas.addEventListener("drop", (e) => {
-    e.preventDefault();
-    const nodeType = e.dataTransfer.getData("text/plain");
-    if (!nodeType) {
-      return;
-    }
-    const title = document.querySelector(
-      `[data-node-type="${nodeType}"] h3`,
-    ).innerText;
-    const { x: posX, y: posY } = getCanvasCoordinates(e);
+  const createNodeElement = (content, x = "50%", y = "50%") => {
     const node = document.createElement("div");
     node.className = "drawflow-node";
-    node.id = `node-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`; // Unique ID
+    node.id = generateId();
     node.innerHTML = `
       <div class="bg-gradient-to-br from-gray-800/70 to-gray-900/70 p-3 rounded-lg border border-gray-700/50 relative shadow-lg cursor-pointer">
-        <span class="font-medium text-sm">${title}</span>
-        <button class="delete-node absolute top-1 right-1 w-6 h-6 bg-red-500/70 hover:bg-red-600/70 text-white rounded-full flex items-center justify-center">X</button>
+        <span class="font-medium text-sm">${content}</span>
+        <button class="delete-node absolute -top-3 -right-3 w-6 h-6 bg-red-500/70 hover:bg-red-600 text-white rounded-full text-center flex justify-center items-center">X</button>
       </div>
     `;
-    node.style.position = "absolute";
-    node.style.left = `${posX}px`;
-    node.style.top = `${posY}px`;
-    node.style.transform = "none";
+    Object.assign(node.style, {
+      position: "absolute",
+      left: typeof x === "number" ? `${x}px` : x,
+      top: typeof y === "number" ? `${y}px` : y,
+      transform: typeof x === "number" ? "none" : "translate(-50%, -50%)",
+    });
     canvas.appendChild(node);
     node.addEventListener("click", handleNodeClick);
     makeDraggable(node);
     updateConnections();
+  };
+
+  document.querySelectorAll(".node-item").forEach((item) => {
+    item.draggable = true;
+    item.ondragstart = (e) => {
+      e.dataTransfer.setData("text/plain", item.dataset.nodeType);
+      e.dataTransfer.setDragImage(item, 10, 10);
+    };
+  });
+
+  canvas.ondragover = (e) => {
+    e.preventDefault();
+  };
+
+  canvas.ondrop = (e) => {
+    e.preventDefault();
+    const type = e.dataTransfer.getData("text/plain");
+    const title =
+      document.querySelector(`[data-node-type="${type}"] h3`)?.innerText ||
+      type;
+    const { x, y } = getCanvasCoordinates(e);
+    createNodeElement(title, x, y);
+  };
+
+  const handleNodeClick = (e) => {
+    const node = e.currentTarget;
+    if (!connectMode) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!sourceNode) {
+      sourceNode = node;
+      node.style.border = "2px solid orange";
+    } else if (sourceNode !== node) {
+      const key = [sourceNode.id, node.id].sort().join("-");
+      connections.set(key, { from: sourceNode, to: node });
+      sourceNode.style.border = "";
+      node.style.border = "";
+      sourceNode = null;
+      updateConnections();
+    } else {
+      sourceNode.style.border = "";
+      sourceNode = null;
+    }
+  };
+
+  connectBtn?.addEventListener("click", () => {
+    connectMode = !connectMode;
+    sourceNode?.style?.removeProperty("border");
+    sourceNode = null;
+    connectBtn.textContent = connectMode ? "Cancel Connect" : "Connect";
   });
 
   document.addEventListener("click", (e) => {
     if (e.target.classList.contains("delete-node")) {
       const node = e.target.closest(".drawflow-node");
-      node.remove();
-      connections.forEach((conn, key) => {
-        if (conn.from === node || conn.to === node) {
-          connections.delete(key);
-        }
+      node?.remove();
+      [...connections].forEach(([key, { from, to }]) => {
+        if (from === node || to === node) connections.delete(key);
       });
       updateConnections();
     }
   });
 
-  function handleNodeClick(e) {
-    const node = e.currentTarget;
-    if (connectMode) {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!sourceNode) {
-        sourceNode = node;
-        sourceNode.style.border = "2px solid orange"; // Visual feedback
-      } else if (sourceNode !== node) {
-        const key = [sourceNode.id, node.id].sort().join("-");
-        connections.set(key, { from: sourceNode, to: node });
-        sourceNode.style.border = ""; // Reset source border
-        node.style.border = ""; // Reset target border
-        sourceNode = null;
-        updateConnections();
-      } else {
-        sourceNode.style.border = ""; // Deselect if same node clicked
-        sourceNode = null;
-      }
-      return;
-    }
-  }
-
-  function toggleConnectMode() {
-    connectMode = !connectMode;
-    if (!connectMode && sourceNode) {
-      sourceNode.style.border = ""; // Reset if mode is turned off
-      sourceNode = null;
-    }
-    const connectBtn = document.getElementById("connect-btn");
-    if (connectBtn) {
-      connectBtn.textContent = connectMode ? "Cancel Connect" : "Connect";
-    } else {
-      console.error("Connect button not found!");
-    }
-  }
-
-  // Ensure connect button is present and functional
-  const connectBtn = document.getElementById("connect-btn");
-  if (connectBtn) {
-    connectBtn.addEventListener("click", toggleConnectMode);
-  } else {
-    console.error("Connect button not found in DOM!");
-  }
-
-  function showSidebar() {
-    sidebar.classList.remove("hidden");
-    requestAnimationFrame(() => {
-      sidebar.classList.remove("translate-x-full");
-    });
-  }
-
-  function hideSidebar() {
-    sidebar.classList.add("translate-x-full");
-  }
-
-  document.getElementById("add-btn").addEventListener("click", () => {
-    if (sidebar.classList.contains("translate-x-full")) {
-      showSidebar();
-    } else {
-      hideSidebar();
-    }
+  $("add-btn")?.addEventListener("click", () => {
+    sidebar.classList.toggle("translate-x-full");
+    sidebar.classList.toggle(
+      "hidden",
+      sidebar.classList.contains("translate-x-full"),
+    );
   });
 
-  document.getElementById("close-btn").addEventListener("click", () => {
-    hideSidebar();
-  });
+  $("close-btn")?.addEventListener("click", () =>
+    sidebar.classList.add("translate-x-full"),
+  );
 
-  sidebar.addEventListener("transitionend", (e) => {
+  sidebar.addEventListener("transitionend", ({ propertyName }) => {
     if (
-      e.propertyName === "transform" &&
+      propertyName === "transform" &&
       sidebar.classList.contains("translate-x-full")
     ) {
       sidebar.classList.add("hidden");
     }
   });
 
-  document.getElementById("add-text-btn").addEventListener("click", () => {
-    const textInput = document.getElementById("text-input");
-    const text = textInput.value.trim();
+  $("add-text-btn")?.addEventListener("click", () => {
+    const text = $("text-input")?.value?.trim();
     if (text) {
-      const textElement = document.createElement("div");
-      textElement.className = "drawflow-node";
-      textElement.id = `node-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`; // Unique ID
-      textElement.innerHTML = `
-        <div class="bg-gradient-to-br from-gray-800/70 to-gray-900/70 p-3 rounded-lg border border-gray-700/50 relative shadow-lg">
-          <span class="font-medium text-sm">${text}</span>
-          <button class="delete-node absolute top-1 right-1 w-6 h-6 bg-red-500/70 hover:bg-red-600/70 text-white rounded-full flex items-center justify-center">X</button>
-        </div>
-      `;
-      textElement.style.position = "absolute";
-      textElement.style.left = "50%";
-      textElement.style.top = "50%";
-      textElement.style.transform = "translate(-50%, -50%)";
-      canvas.appendChild(textElement);
-      textElement.addEventListener("click", handleNodeClick);
-      makeDraggable(textElement);
-      updateConnections();
-      textInput.value = "";
-    } else {
+      createNodeElement(text);
+      $("text-input").value = "";
     }
   });
 
-  document.getElementById("maximize-btn").addEventListener("click", () => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-    } else {
-      canvas.requestFullscreen().catch((err) => console.error(err));
-    }
-  });
+  const minScale = 0.1;
+  const maxScale = 10;
 
-  document.getElementById("zoom-in-btn").addEventListener("click", () => {
-    scale *= 1.1;
-    canvas.style.transform = `scale(${scale}) translate(0, 0)`;
-    connectionCanvas.style.transform = `scale(${scale}) translate(0, 0)`;
+  const applyZoom = () => {
+    [canvas, connectionCanvas].forEach(
+      (el) => (el.style.transform = `scale(${scale})`),
+    );
     updateConnections();
+  };
+
+  $("zoom-in-btn")?.addEventListener("click", () => {
+    scale = Math.min(maxScale, scale * 1.1);
+    applyZoom();
   });
 
-  document.getElementById("zoom-out-btn").addEventListener("click", () => {
+  $("zoom-out-btn")?.addEventListener("click", () => {
+    scale = Math.max(minScale, scale / 1.1);
+    applyZoom();
+  });
+  $("zoom-out-btn")?.addEventListener("click", () => {
     scale /= 1.1;
-    canvas.style.transform = `scale(${scale}) translate(0, 0)`;
-    connectionCanvas.style.transform = `scale(${scale}) translate(0, 0)`;
+    [canvas, connectionCanvas].forEach(
+      (el) => (el.style.transform = `scale(${scale})`),
+    );
     updateConnections();
   });
 
-  document.getElementById("reset-btn").addEventListener("click", () => {
+  $("reset-btn")?.addEventListener("click", () => {
     canvas.innerHTML = "";
     connections.clear();
     scale = 1;
-    canvas.style.transform = `scale(${scale}) translate(0, 0)`;
-    connectionCanvas.style.transform = `scale(${scale}) translate(0, 0)`;
+    [canvas, connectionCanvas].forEach(
+      (el) => (el.style.transform = `scale(1)`),
+    );
     connectionCanvas.width = canvas.offsetWidth;
     connectionCanvas.height = canvas.offsetHeight;
   });
 
-  document.getElementById("search-input").addEventListener("input", (e) => {
-    const searchTerm = e.target.value.toLowerCase();
-    document.querySelectorAll(".node-item").forEach((node) => {
-      const title = node.querySelector("h3").innerText.toLowerCase();
-      node.style.display = title.includes(searchTerm) ? "flex" : "none";
+  $("search-input")?.addEventListener("input", ({ target }) => {
+    const searchTerm = target.value.toLowerCase();
+    document.querySelectorAll(".node-item").forEach((item) => {
+      const title = item.querySelector("h3")?.innerText.toLowerCase() || "";
+      item.style.display = title.includes(searchTerm) ? "flex" : "none";
     });
+  });
+
+  $("maximize-btn")?.addEventListener("click", () => {
+    document.fullscreenElement
+      ? document.exitFullscreen()
+      : canvas.requestFullscreen().catch(console.error);
   });
 });
